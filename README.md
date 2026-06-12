@@ -1,6 +1,6 @@
 
 
-```markdown
+
 🛎️ **Support Bot Telegram**
 Python • Telebot • SQLite • Техническая поддержка
 
