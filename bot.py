@@ -1,12 +1,11 @@
-
 import telebot
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 import re
+from datetime import datetime
 
 # Импортируем модули
 from database import init_db, add_request, get_all_requests, update_request_status, get_requests_by_department
 from faq_data import find_answer, get_faq_list
-
 
 BOT_TOKEN = ""
 
@@ -15,6 +14,9 @@ bot = telebot.TeleBot(BOT_TOKEN)
 
 # Инициализируем базу данных при запуске
 init_db()
+
+# ВАШ РЕАЛЬНЫЙ ID (получите через /myid)
+ADMIN_IDS = [...]  
 
 # Клавиатуры и кнопки
 
@@ -70,7 +72,7 @@ def start(message):
     
     welcome_text = (
         f"*Здравствуйте, {user_name}!*\n\n"
-        f"Добро пожаложаловать в службу поддержки интернет-магазина *Продаем все на свете!* \n\n"
+        f"Добро пожаловать в службу поддержки интернет-магазина *Продаем все на свете!* \n\n"
         f"Я помогу вам:\n"
         f"• Найти ответы на частые вопросы\n"
         f"• Связаться с нужным специалистом\n"
@@ -88,10 +90,8 @@ def start(message):
 @bot.message_handler(commands=['admin'])
 def admin_panel(message):
     """Скрытая команда /admin для администраторов"""
-    # Проверяем, что это администратор 
-    admin_ids = [123456789]  
-    
-    if message.from_user.id in admin_ids:
+    # Проверяем, что это администратор
+    if message.from_user.id in ADMIN_IDS:
         bot.send_message(
             message.chat.id,
             "*Панель администратора*\n\nВыберите действие:",
@@ -100,6 +100,15 @@ def admin_panel(message):
         )
     else:
         bot.send_message(message.chat.id, "У вас нет доступа к этой команде!")
+
+@bot.message_handler(commands=['myid'])
+def get_my_id(message):
+    """Временная команда для получения ID пользователя"""
+    bot.send_message(
+        message.chat.id, 
+        f"Ваш Telegram ID: `{message.from_user.id}`\n\n"
+        f"Добавьте этот ID в список ADMIN_IDS в коде."
+    )
 
 # Обработчик текстовых сообщений
 
@@ -110,8 +119,11 @@ def handle_message(message):
     user_id = message.from_user.id
     user_name = message.from_user.first_name
     
+    # Нормализуем текст для сравнения (убираем лишние пробелы)
+    normalized_text = ' '.join(text.split())
+    
     # Главное меню
-    if text == "Частые вопросы":
+    if normalized_text == "Частые вопросы":
         bot.send_message(
             message.chat.id,
             "*Часто задаваемые вопросы*\n\nВыберите интересующий вас вопрос:",
@@ -119,7 +131,7 @@ def handle_message(message):
             reply_markup=get_faq_keyboard()
         )
     
-    elif text == "Связаться с поддержкой":
+    elif normalized_text == "Связаться с поддержкой":
         bot.send_message(
             message.chat.id,
             "*Как с нами связаться:*\n\n"
@@ -130,7 +142,7 @@ def handle_message(message):
         )
     
     # Отделы
-    elif text == "Программисты":
+    elif normalized_text == "Программисты":
         bot.send_message(
             message.chat.id,
             "*Отдел программистов*\n\n"
@@ -139,10 +151,9 @@ def handle_message(message):
             "Например: *'Не могу войти в личный кабинет'*",
             parse_mode="Markdown"
         )
-        # Устанавливаем состояние ожидания проблемы
         bot.register_next_step_handler(message, handle_programmer_request)
     
-    elif text == "Отдел продаж":
+    elif normalized_text == "Отдел продаж":
         bot.send_message(
             message.chat.id,
             "*Отдел продаж*\n\n"
@@ -154,53 +165,53 @@ def handle_message(message):
         bot.register_next_step_handler(message, handle_sales_request)
     
     # FAQ вопросы
-    elif text == "Как оформить заказ":
+    elif normalized_text == "Как оформить заказ":
         answer = find_answer("как оформить заказ")
         bot.send_message(message.chat.id, answer, parse_mode="Markdown")
     
-    elif text == "Статус заказа":
+    elif normalized_text == "Статус заказа":
         answer = find_answer("статус заказа")
         bot.send_message(message.chat.id, answer, parse_mode="Markdown")
     
-    elif text == "Отменить заказ":
+    elif normalized_text == "Отменить заказ":
         answer = find_answer("отменить заказ")
         bot.send_message(message.chat.id, answer, parse_mode="Markdown")
     
-    elif text == "Поврежденный товар":
+    elif normalized_text == "Поврежденный товар":
         answer = find_answer("товар пришел поврежденным")
         bot.send_message(message.chat.id, answer, parse_mode="Markdown")
     
-    elif text == "Техподдержка":
+    elif normalized_text == "Техподдержка":
         answer = find_answer("техническая поддержка")
         bot.send_message(message.chat.id, answer, parse_mode="Markdown")
     
-    elif text == "Доставка":
+    elif normalized_text == "Доставка":
         answer = find_answer("доставка")
         bot.send_message(message.chat.id, answer, parse_mode="Markdown")
     
-    elif text == "Возврат товара":
+    elif normalized_text == "Возврат товара":
         answer = find_answer("возврат товара")
         bot.send_message(message.chat.id, answer, parse_mode="Markdown")
     
-    elif text == "Как оплатить":
+    elif normalized_text == "Как оплатить":
         answer = find_answer("как оплатить")
         bot.send_message(message.chat.id, answer, parse_mode="Markdown")
     
-    # Информация
-    elif text == "Информация о магазине":
+    # Информация о магазине
+    elif normalized_text == "Информация о магазине":
         info_text = (
-            "*О магазине 'Продаем все на свете'*\n\n"
-            " Работаем с 2015 года\n"
+            "О магазине 'Продаем все на свете'\n\n"
+            "Работаем с 2015 года\n"
             "Более 10 000 довольных клиентов\n"
             "Доставка по всей стране\n"
             "Онлайн-оплата и наличные\n\n"
-            "Наш сайт: www.shop_we sell everything in the world.ru\n"
-            "Горячая линия: 8-800-123-45-67"
+            "Наш сайт: www.shop_weselleverything.com\n"
+            "Горячая линия: 8-148-152-42-67"
         )
-        bot.send_message(message.chat.id, info_text, parse_mode="Markdown")
+        bot.send_message(message.chat.id, info_text)
     
     # Возврат в главное меню
-    elif text == "Назад в главное меню":
+    elif normalized_text == "Назад в главное меню":
         bot.send_message(
             message.chat.id,
             "*Главное меню*\n\nВыберите действие:",
@@ -208,19 +219,27 @@ def handle_message(message):
             reply_markup=get_main_keyboard()
         )
     
-    # Админская панель
-    elif text == "Все запросы":
-        show_all_requests(message)
+    # Админская панель 
+    elif normalized_text == "Все запросы":
+        if message.from_user.id in ADMIN_IDS:
+            show_all_requests(message)
+        else:
+            bot.send_message(message.chat.id, "У вас нет доступа к этой функции!")
     
-    elif text == "Запросы к программистам":
-        show_requests_by_department(message, "программисты")
+    elif normalized_text == "Запросы к программистам":
+        if message.from_user.id in ADMIN_IDS:
+            show_requests_by_department(message, "программисты")
+        else:
+            bot.send_message(message.chat.id, "У вас нет доступа к этой функции!")
     
-    elif text == "Запросы к продажам":
-        show_requests_by_department(message, "продажи")
+    elif normalized_text == "Запросы к продажам":
+        if message.from_user.id in ADMIN_IDS:
+            show_requests_by_department(message, "продажи")
+        else:
+            bot.send_message(message.chat.id, "У вас нет доступа к этой функции!")
     
     # Произвольный вопрос или FAQ
     else:
-        # Ищем ответ в FAQ
         answer = find_answer(text)
         if answer:
             bot.send_message(message.chat.id, answer, parse_mode="Markdown")
@@ -230,7 +249,6 @@ def handle_message(message):
                 reply_markup=get_main_keyboard()
             )
         else:
-            # Если не нашли в FAQ, предлагаем обратиться к специалисту
             bot.send_message(
                 message.chat.id,
                 "Я не уверен, что могу ответить на этот вопрос.\n\n"
@@ -248,7 +266,6 @@ def handle_programmer_request(message):
     user_name = message.from_user.first_name
     question = message.text
     
-    # Сохраняем в базу данных
     add_request(user_id, user_name, "программисты", question)
     
     bot.send_message(
@@ -261,16 +278,13 @@ def handle_programmer_request(message):
         reply_markup=get_main_keyboard()
     )
     
-    # Уведомление администратора 
-    admin_ids = [123456789]  
-    for admin_id in admin_ids:
+    for admin_id in ADMIN_IDS:
         bot.send_message(
             admin_id,
             f"*Новый запрос к ПРОГРАММИСТАМ!*\n\n"
             f"Пользователь: {user_name} (ID: {user_id})\n"
             f"Вопрос: {question}\n"
-            f"Время: {__import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-            f"Для просмотра всех запросов используйте /admin",
+            f"Время: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
             parse_mode="Markdown"
         )
 
@@ -280,7 +294,6 @@ def handle_sales_request(message):
     user_name = message.from_user.first_name
     question = message.text
     
-    # Сохраняем в базу данных
     add_request(user_id, user_name, "продажи", question)
     
     bot.send_message(
@@ -292,15 +305,13 @@ def handle_sales_request(message):
         reply_markup=get_main_keyboard()
     )
     
-    # Уведомление администратора
-    admin_ids = [123456789]
-    for admin_id in admin_ids:
+    for admin_id in ADMIN_IDS:
         bot.send_message(
             admin_id,
             f"*Новый запрос в ОТДЕЛ ПРОДАЖ!*\n\n"
             f"Пользователь: {user_name} (ID: {user_id})\n"
             f"Вопрос: {question}\n"
-            f"Время: {__import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            f"Время: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
             parse_mode="Markdown"
         )
 
@@ -314,7 +325,7 @@ def show_all_requests(message):
         bot.send_message(message.chat.id, "Пока нет ни одного запроса.")
         return
     
-    for req in requests[:10]:  # Показывает последние 10
+    for req in requests[:10]:
         req_text = (
             f"ID: {req[0]}\n"
             f"Пользователь: {req[2]}\n"
@@ -338,15 +349,19 @@ def show_requests_by_department(message, department):
     
     bot.send_message(message.chat.id, f"*Запросы к {dept_name}:*", parse_mode="Markdown")
     
-    for req in requests[:5]:  # Показывает последние 5
+    for req in requests[:5]:
         req_text = (
             f"ID: {req[0]}\n"
             f"{req[2]}: {req[4]}\n"
             f"Статус: {req[5]}\n"
+            f"{'-'*20}"
         )
         bot.send_message(message.chat.id, req_text)
 
 # Запуск бота
 if __name__ == "__main__":
-    print("ВСЕ ОК И /admin")
+    print("Бот запущен!")
+    print("Команды:")
+    print("/admin - панель администратора")
+    print("/myid - узнать свой Telegram ID")
     bot.infinity_polling()
